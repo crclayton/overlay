@@ -87,7 +87,7 @@ def copy_mov_with_standard_metadata(
     cmd = [
         "ffmpeg", "-y",
         "-i", input_mov,
-        "-t", "0.25", # TODO FOR DEBUGGING FASTER
+        #"-t", "0.25", # FOR DEBUGGING FASTER
         "-map", "0",            # include every stream
         #"-c", "copy",           # no re-encode
         "-map_metadata", "-1", #-1",  # clear all metadata atoms

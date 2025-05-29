@@ -1,4 +1,3 @@
-# TODO
 # make it so clean also makes the size the same so the overlay stays proportional
 
 import os
@@ -314,7 +313,7 @@ def extract_video_metadata(video_path):
 
             #date = None
 
-        #return date, None, None # TODO for temp, don't want to use the API that much
+        #return date, None, None # DEBUGGING for temp, don't want to use the API that much
 
         print("DATE", date)
         lat = meta.get('GPS Latitude') or meta.get('gps_latitude')
@@ -420,14 +419,13 @@ def overlay_text_on_video(video_path, output_path):
 
     # Method 1: Using os.path.exists()
     if os.path.exists(output_path):
-        print(f"File exists at: {output_path}") # TODO turn this back on so we don't reproces
+        print(f"File exists at: {output_path}")
         return
     else:
         print(f"File does not exist at: {output_path} -> creating")
 
     print("HERE")
-    # TODO for debugging
-    video = VideoFileClip(video_path).subclipped(0,0.5)
+    video = VideoFileClip(video_path) #.subclipped(0,0.25) #DEBUGGING
     print("THERE")
 
     width = video.w
