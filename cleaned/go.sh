@@ -1,16 +1,18 @@
+source /home/crclayton/myenv/bin/activate
+
 rm temp_clips/*
 rm final_output.mp4
-rm overlay* -rf
+rm overlay*.mov -rf
+rm overlayed -rf
+mkdir overlayed
 #for file in *.jpg *.jpeg *.png *.mp4 *.mov *.MOV; do
 #for file in *.jpg *.jpeg *.png *.mp4 *.mov *.MOV .*MP4; do
-#for file in *.mp4 *.mov *.MOV .*MP4; do
+for file in *_clean*; do #*.MOV .*MP4 *.mp4 *.mov; do
 #for file in *.mp4 *clean_.mov *.MOV .*MP4; do
-for file in *_clean*; do
+#for file in *; do
   if [[ "$file" == *overlay* ]]; then
     continue  # Skip if "overlay" is in $var
   fi
-  python3 embed_metadata_overlay.py "$file"
+  python3 embed_metadata_overlay.py "$file" || { echo 'my_command failed' ; exit 1; }
 done
-mpv overlay*
-
 

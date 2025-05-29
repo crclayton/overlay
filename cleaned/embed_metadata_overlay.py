@@ -1,3 +1,6 @@
+# TODO
+# make it so clean also makes the size the same so the overlay stays proportional
+
 import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
@@ -6,6 +9,8 @@ import exifread
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, ImageClip
 import numpy as np
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+from time import sleep
 import datetime
 from urllib.request import urlopen
 import json
@@ -15,17 +20,59 @@ from moviepy.video.tools.subtitles import SubtitlesClip
 from hachoir.parser import createParser
 from hachoir.metadata import extractMetadata
 
-def split_address(address: str, max_length: int = 30) -> str:
+def split_address(address: str, max_length: int = 20) -> str:
+    """
+    Break `address` into up to three lines:
+      1. Split on first ', ' after max_length
+      2. If no comma, split on first space after max_length
+      3. If remainder > max_length, repeat the same split on the remainder
+    """
+    # If it already fits, nothing to do
     if len(address) <= max_length:
         return address
 
-    # Find the first ", " after max_length
-    split_index = address.find(", ", max_length)
-    if split_index == -1:
-        return address  # No suitable comma found; return original
+    def _break(s: str) -> (str, str):
+        """Try splitting s into (head, tail) at a comma or space."""
+        # 1) comma after max_length
+        idx = s.find(", ", max_length)
+        if idx != -1:
+            return s[:idx], s[idx+2:].strip()
+        # 2) space after max_length
+        idx = s.find(" ", max_length)
+        if idx != -1:
+            return s[:idx], s[idx+1:].strip()
+        # no split point
+        return s, ""
 
-    # Replace the comma and space with newline
-    return address[:split_index] + "\n" + address[split_index + 2:]
+    # First split
+    line1, rest = _break(address)
+    if not rest:
+        return line1  # couldn't split at all
+
+    # If the rest is still long, do a second split
+    if len(rest) > max_length:
+        line2, line3 = _break(rest)
+        if line3:
+            return f"{line1}\n{line2}\n{line3}"
+        else:
+            return f"{line1}\n{line2}"
+    else:
+        return f"{line1}\n{rest}"
+
+
+#def split_address(address: str, max_length: int = 25) -> str:
+#    if len(address) <= max_length:
+#        return address
+#
+#    # Find the first ", " after max_length
+#    split_index = address.find(", ", max_length)
+#    if split_index == -1:
+#        print("No comma to break on, breaking on a space instead")
+#        split_index = address.find(" ", max_length)
+#        #return address  # No suitable comma found; return original
+#
+#    # Replace the comma and space with newline
+#    return address[:split_index] + "\n" + address[split_index + 2:]
 
 
 def decimal_coords(coords, ref):
@@ -51,57 +98,57 @@ def image_coordinates(image_path):
         print ('The Image has no EXIF information')
 
 
-def extract_image_metadata(image_path):
-    with open(image_path, 'rb') as f:
-        tags = exifread.process_file(f)
-    date = tags.get('EXIF DateTimeOriginal') or tags.get('Image DateTime')
-    print("DATE->",date)
-    if date == None:
-        date_image_path = image_path.replace("Screenshot_","")
-        print(image_path)
-        print(image_path[:15])
-        date = datetime.datetime.strptime(date_image_path[:15], "%Y%m%d-%H%M%S")
-        print(date)
-
-    print("DATETIME->",date, type(date))
-
-    gps_lat = tags.get('GPS GPSLatitude')
-    gps_lon = tags.get('GPS GPSLongitude')
-    lat_ref = tags.get('GPS GPSLatitudeRef')
-    lon_ref = tags.get('GPS GPSLongitudeRef')
-
-    def _convert_gps(gps, ref):
-        if gps:
-            d, m, s = [float(str(x).split('/')[0]) for x in gps.values]
-            coord = d + m / 60 + s / 3600
-            if ref in ['S', 'W']:
-                coord = -coord
-            return coord
-        return None
-
-    lat = _convert_gps(gps_lat, lat_ref)
-    lon = _convert_gps(gps_lon, lon_ref)
-
-    if lat == None or lon == None:
-
-                # Load EXIF from the file directly
-        exif_dict = piexif.load(image_path)
-
-        # GPS data is under the 'GPS' IFD
-        gps_data = exif_dict.get('GPS')
-        print("GPS", gps_data)
-        if gps_data == {}:
-            print("No GPS data")
-        else:
-            print("GPS_DATA", gps_data)
-            coords = image_coordinates(image_path)
-            print("COORDS", coords)
-            lat = coords["geolocation_lat"]
-            lon = coords["geolocation_lng"]
-            print("LAT, LON", lat, lon)
-
-    print("end", date, lat, lon)
-    return date, lat, lon
+# def extract_image_metadata(image_path):
+#     with open(image_path, 'rb') as f:
+#         tags = exifread.process_file(f)
+#     date = tags.get('EXIF DateTimeOriginal') or tags.get('Image DateTime')
+#     print("DATE->",date)
+#     if date == None:
+#         date_image_path = image_path.replace("Screenshot_","")
+#         print(image_path)
+#         print(image_path[:15])
+#         date = datetime.datetime.strptime(image[:15], "%Y%m%d-%H%M%S")
+#         print(date)
+#
+#     print("DATETIME->",date, type(date))
+#
+#     gps_lat = tags.get('GPS GPSLatitude')
+#     gps_lon = tags.get('GPS GPSLongitude')
+#     lat_ref = tags.get('GPS GPSLatitudeRef')
+#     lon_ref = tags.get('GPS GPSLongitudeRef')
+#
+#     def _convert_gps(gps, ref):
+#         if gps:
+#             d, m, s = [float(str(x).split('/')[0]) for x in gps.values]
+#             coord = d + m / 60 + s / 3600
+#             if ref in ['S', 'W']:
+#                 coord = -coord
+#             return coord
+#         return None
+#
+#     lat = _convert_gps(gps_lat, lat_ref)
+#     lon = _convert_gps(gps_lon, lon_ref)
+#
+#     if lat == None or lon == None:
+#
+#                 # Load EXIF from the file directly
+#         exif_dict = piexif.load(image_path)
+#
+#         # GPS data is under the 'GPS' IFD
+#         gps_data = exif_dict.get('GPS')
+#         print("GPS", gps_data)
+#         if gps_data == {}:
+#             print("No GPS data")
+#         else:
+#             print("GPS_DATA", gps_data)
+#             coords = image_coordinates(image_path)
+#             print("COORDS", coords)
+#             lat = coords["geolocation_lat"]
+#             lon = coords["geolocation_lng"]
+#             print("LAT, LON", lat, lon)
+#
+#     print("end", date, lat, lon)
+#     return date, lat, lon
 
 def format_pretty_date(date_obj):
     print("OBJ", date_obj)
@@ -111,49 +158,49 @@ def format_pretty_date(date_obj):
 
 
 
-def overlay_text_on_image(image_path, output_path):
-    img = Image.open(image_path).convert("RGBA")
-    date, lat, lon = extract_image_metadata(image_path)
-
-    # Load a nicer font if available
-    try:
-        font = ImageFont.truetype("DejaVuSans.ttf", 40)
-    except:
-        font = ImageFont.load_default()
-
-    print("DATE2", date)
-    pretty_date = format_pretty_date(date)
-    # Prepare the overlay text
-    text = f"Date: {pretty_date or 'Unknown'}\nGPS: {lat or 'N/A'}, {lon or 'N/A'}"
-    text = pretty_date + "\n" + format_pretty_place(lat, lon)
-
-    draw = ImageDraw.Draw(img)
-
-    # Calculate text bounding box (x0, y0, x1, y1)
-    bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
-
-    # Position: bottom-left with padding
-    padding = 20
-    x = padding
-    y = img.height - text_height - padding
-
-    # Draw semi-transparent background box
-    #bg_box = Image.new("RGBA", (text_width + 2*padding, text_height + 2*padding), (0, 0, 0, 128))
-    #img.paste(bg_box, (x - padding, y - padding), bg_box)
-
-    # Draw text over the background
-    shadow_offset = 3
-    draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill="black")
-    draw.text((x, y), text, font=font, fill="#eb9605")
-    #draw.multiline_text((x, y), text, fill="yellow", font=font)
-
-    output_path = "overlay_" + date.strftime("%Y%m%d-%H%M%S") + output_path
-    # Save final image
-    img.convert("RGB").save(output_path)
-    print(f"Saved image with overlay to {output_path}")
-
+#def overlay_text_on_image(image_path, output_path):
+#    img = Image.open(image_path).convert("RGBA")
+#    date, lat, lon = extract_image_metadata(image_path)
+#
+#    # Load a nicer font if available
+#    try:
+#        font = ImageFont.truetype("DejaVuSans.ttf", 40)
+#    except:
+#        font = ImageFont.load_default()
+#
+#    print("DATE2", date)
+#    pretty_date = format_pretty_date(date)
+#    # Prepare the overlay text
+#    text = f"Date: {pretty_date or 'Unknown'}\nGPS: {lat or 'N/A'}, {lon or 'N/A'}"
+#    text = pretty_date + "\n" + format_pretty_place(lat, lon)
+#
+#    draw = ImageDraw.Draw(img)
+#
+#    # Calculate text bounding box (x0, y0, x1, y1)
+#    bbox = draw.textbbox((0, 0), text, font=font)
+#    text_width = bbox[2] - bbox[0]
+#    text_height = bbox[3] - bbox[1]
+#
+#    # Position: bottom-left with padding
+#    padding = 20
+#    x = padding
+#    y = img.height - text_height - padding
+#
+#    # Draw semi-transparent background box
+#    #bg_box = Image.new("RGBA", (text_width + 2*padding, text_height + 2*padding), (0, 0, 0, 128))
+#    #img.paste(bg_box, (x - padding, y - padding), bg_box)
+#
+#    # Draw text over the background
+#    shadow_offset = 3
+#    draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill="black")
+#    draw.text((x, y), text, font=font, fill="#eb9605")
+#    #draw.multiline_text((x, y), text, fill="yellow", font=font)
+#
+#    output_path = "overlay_" + date.strftime("%Y%m%d-%H%M%S") + output_path
+#    # Save final image
+#    img.convert("RGB").save(output_path)
+#    print(f"Saved image with overlay to {output_path}")
+#
 
 import subprocess
 import json
@@ -183,7 +230,7 @@ def extract_decimal_coordinates(text):
     )
     match = pattern.search(text)
     if not match:
-        return None
+        return None, None
 
     lat_deg, lat_min, lat_sec, lat_dir, lon_deg, lon_min, lon_sec, lon_dir = match.groups()
 
@@ -204,6 +251,11 @@ def get_gps_from_video(file_path):
                 return extract_decimal_coordinates(line)
     return None, None
 
+
+import datetime, pathlib
+
+
+
 def extract_video_metadata(video_path):
     parser = createParser(video_path)
     if not parser:
@@ -217,10 +269,54 @@ def extract_video_metadata(video_path):
         exported = metadata.exportDictionary()
         meta = exported.get('Metadata', {})
 
+        print("METADATA", meta)
+
         # meta is already a dictionary: keys are strings, values are values
         date = meta.get('Creation date') or meta.get('creation_date')
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        print("FORMAT", date)
+
+        print(date)
+
+        if date == None or date < datetime.datetime(2020,1,1):
+            print("Bad date. Trying to extract date from filename", date)
+            filename = pathlib.Path(video_path).stem[:8]
+            if filename.isdigit():
+                date = datetime.datetime.strptime(filename, '%Y%m%d')
+            else:
+                pass
+
+                # first, try Hachoir parser
+                raw = meta.get('Creation date') or meta.get('creation_date')
+                date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S") if raw else None
+
+                # if that failed or is obviously wrong (< 2020), fall back to ffprobe JSON
+                if date is None or date < datetime.datetime(2020, 1, 1):
+                    print(f"Bad date from Hachoir ({date}); falling back to ffprobe…")
+                    info = get_video_metadata(video_path)
+                    tags = info.get("format", {}).get("tags", {})
+
+                    # pick the first ISO‐style timestamp available
+                    date_str = (
+                        tags.get("creation_time")
+                        or tags.get("date")
+                        or tags.get("com.apple.quicktime.creationdate")
+                    )
+                    if date_str and date_str != "None":
+                        # normalize trailing Z → +00:00 so fromisoformat() will work
+                        date = datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                    else:
+                        # last resort: parse YYYYMMDD from the filename stem
+                        stem8 = pathlib.Path(video_path).stem[:8]
+                        if stem8.isdigit():
+                            date = datetime.datetime.strptime(stem8, "%Y%m%d")
+                        else:
+                            date = datetime.datetime(1970, 1, 1)
+
+            #date = None
+
+        #return date, None, None # TODO for temp, don't want to use the API that much
+
+        print("DATE", date)
         lat = meta.get('GPS Latitude') or meta.get('gps_latitude')
         lon = meta.get('GPS Longitude') or meta.get('gps_longitude')
 
@@ -228,15 +324,18 @@ def extract_video_metadata(video_path):
         if lat == None or lon == None:
             print("Trying for data")
             metadata = get_video_metadata(video_path)
+            print("METADATA2", metadata)
+
             gps_info = metadata.get("format", {}).get("tags", {})
             print("GPS", gps_info)
 
             loc = gps_info.get("location")
-            print("LOC",loc)
-            if not loc:
-
+            print("LOCATION",loc)
+            if loc is None or loc == "None":
+                print("Getting GPS from video")
                 lat, lon = get_gps_from_video(video_path)
             else:
+                print("Getting GPS from extracted location string")
 
                 # Remove trailing slash
                 loc = loc.rstrip('/')
@@ -309,24 +408,27 @@ def format_pretty_place(lat, lon):
         split_address_v = split_address(clean_address)
         print("Split address", split_address_v)
         return split_address_v
-    except:
+    except GeocoderTimedOut as e:
         print("GPS geolocator reverse failed")
+        sleep(5)
         return "Failed to resolve GPS, likely in or near Seattle" #Seattle, Washington"
 
 
 def overlay_text_on_video(video_path, output_path):
     date, lat, lon = extract_video_metadata(video_path)
-    output_path = "overlay_" + date.strftime("%Y%m%d-%H%M%S") + output_path
+    output_path = "overlayed/overlay_" + date.strftime("%Y%m%d-%H%M%S") + output_path
 
     # Method 1: Using os.path.exists()
     if os.path.exists(output_path):
-        print(f"File exists at: {output_path}")
-        #return
+        print(f"File exists at: {output_path}") # TODO turn this back on so we don't reproces
+        return
     else:
-        print(f"File does not exist at: {output_path}")
+        print(f"File does not exist at: {output_path} -> creating")
 
-
+    print("HERE")
+    # TODO for debugging
     video = VideoFileClip(video_path).subclipped(0,0.5)
+    print("THERE")
 
     width = video.w
     height = video.h
@@ -400,9 +502,9 @@ def overlay_text_on_video(video_path, output_path):
 def process_media(path):
     if "overlay" in path: return
     ext = os.path.splitext(path)[1].lower()
-    if ext in ['.jpg', '.jpeg', '.png']:
-        overlay_text_on_image(path, f"overlay_{os.path.basename(path)}")
-    elif ext in ['.mp4', '.mov']:
+    #if ext in ['.jpg', '.jpeg', '.png']:
+    #    overlay_text_on_image(path, f"overlay_{os.path.basename(path)}")
+    if ext in ['.mp4', '.mov']:
         overlay_text_on_video(path, f"overlay_{os.path.basename(path)}")
     else:
         print(f"Unsupported file type: {ext}")
