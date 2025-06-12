@@ -10,5 +10,6 @@ for file in *_clean*; do #*.MOV .*MP4 *.mp4 *.mov; do
     continue  # Skip if "overlay" is in $var
   fi
   python3 embed_metadata_overlay.py "$file" || { echo 'my_command failed' ; exit 1; }
+  mv "$file" processed
 done
 

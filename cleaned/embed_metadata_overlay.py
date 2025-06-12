@@ -321,7 +321,6 @@ def extract_video_metadata(video_path):
 
         print("LATLON", lat, lon)
         if lat == None or lon == None:
-            print("Trying for data")
             metadata = get_video_metadata(video_path)
             print("METADATA2", metadata)
 
@@ -385,7 +384,7 @@ def exif_to_tag(exif_dict):
 def format_pretty_place(lat, lon):
     if lat == None or lon == None:
         print("No lat or lon")
-        return "No GPS Data, likely in or near Seattle" #Seattle, Washington"
+        return "No GPS Data" #, likely in or near Seattle" #Seattle, Washington"
     #return str(lat) + "," + str(lon)
     try:
         location = geolocator.reverse(str(lat)+","+str(lon))
@@ -424,9 +423,7 @@ def overlay_text_on_video(video_path, output_path):
     else:
         print(f"File does not exist at: {output_path} -> creating")
 
-    print("HERE")
     video = VideoFileClip(video_path) #.subclipped(0,0.25) #DEBUGGING
-    print("THERE")
 
     width = video.w
     height = video.h

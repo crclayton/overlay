@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 shopt -s nullglob
 
-rm cleaned/*_clean.mov
-rm cleaned/*_clean.MOV
-rm cleaned/*_clean.mp4
-rm cleaned/*_clean.MP4
-
-rm cleaned/*_clean_rot*.mov
-rm cleaned/*_clean_rot*.MOV
-rm cleaned/*_clean_rot*.mp4
-rm cleaned/*_clean_rot*.MP4
+#rm cleaned/*_clean.mov
+#rm cleaned/*_clean.MOV
+#rm cleaned/*_clean.mp4
+#rm cleaned/*_clean.MP4
+#
+#rm cleaned/*_clean_rot*.mov
+#rm cleaned/*_clean_rot*.MOV
+#rm cleaned/*_clean_rot*.mp4
+#rm cleaned/*_clean_rot*.MP4
 
 
 clean_mov_with_standard_metadata() {
@@ -27,7 +27,7 @@ copy_mov_with_standard_metadata(
 EOF
 }
 
-for f in *.mp4 *.mov *.MOV *.MP4; do
+for f in *.mp4 *.mov *.MOV *.MP4 *.AVI; do
   # 1) Read creation & location
   creation_date=$(ffprobe -v quiet \
     -show_entries format_tags=com.apple.quicktime.creationdate \
@@ -51,7 +51,7 @@ for f in *.mp4 *.mov *.MOV *.MP4; do
 
   out="${f%.*}_clean.mov"
   clean_mov_with_standard_metadata "$f" "cleaned/$out" \
-    "$creation_date" "$location" "$rotation" || { echo 'my_command failed' ; exit 1; }
+    "$creation_date" "$location" "$rotation" || { echo "$f" >> fails.txt ; }# exit 1; }
   echo "✔  $f → $out"
   #exit
 done
