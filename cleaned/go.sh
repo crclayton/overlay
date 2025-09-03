@@ -1,6 +1,6 @@
 source /home/crclayton/myenv/bin/activate
 
-rm overlayed/overlay_* -rf
+#rm overlayed/overlay_* -rf
 #for file in *.jpg *.jpeg *.png *.mp4 *.mov *.MOV; do
 #for file in *.jpg *.jpeg *.png *.mp4 *.mov *.MOV .*MP4; do
 for file in *_clean*; do #*.MOV .*MP4 *.mp4 *.mov; do

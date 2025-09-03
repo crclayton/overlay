@@ -11,15 +11,19 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 from time import sleep
 import datetime
+from datetime import timedelta
+
 from urllib.request import urlopen
 import json
+from pytz import timezone
+
 
 from moviepy.video.tools.subtitles import SubtitlesClip
 
 from hachoir.parser import createParser
 from hachoir.metadata import extractMetadata
 
-def split_address(address: str, max_length: int = 20) -> str:
+def split_address(address: str, max_length: int = 25) -> str:
     """
     Break `address` into up to three lines:
       1. Split on first ', ' after max_length
@@ -153,7 +157,7 @@ def format_pretty_date(date_obj):
     print("OBJ", date_obj)
     if date_obj == None:
         return "0"
-    return date_obj.strftime("%b. %d, %Y (%a)")
+    return date_obj.strftime("%b. %d, %Y (%a) ~%-I%p")
 
 
 
@@ -276,11 +280,14 @@ def extract_video_metadata(video_path):
 
         print(date)
 
-        if date == None or date < datetime.datetime(2020,1,1):
+        if date == None or date < datetime.datetime(2015,1,1):
             print("Bad date. Trying to extract date from filename", date)
             filename = pathlib.Path(video_path).stem[:8]
             if filename.isdigit():
-                date = datetime.datetime.strptime(filename, '%Y%m%d')
+                try:
+                    date = datetime.datetime.strptime(filename, '%Y%m%d')
+                except:
+                    date = None
             else:
                 pass
 
@@ -314,6 +321,19 @@ def extract_video_metadata(video_path):
             #date = None
 
         #return date, None, None # DEBUGGING for temp, don't want to use the API that much
+
+        # converting from GMT to pacific (I think)
+        date = date - timedelta(hours=8, minutes=0)
+
+        def hour_rounder(t):
+            # Rounds to nearest hour by adding a timedelta hour if minute >= 30
+            return (t.replace(second=0, microsecond=0, minute=0, hour=t.hour)
+                       +timedelta(hours=t.minute//30))
+
+        # round to nearest hour because we just show the %I and otherwise it trunkates 9:55AM to 9AM
+        date = hour_rounder(date)
+
+        #date = date.astimezone(timezone('US/Pacific'))
 
         print("DATE", date)
         lat = meta.get('GPS Latitude') or meta.get('gps_latitude')
@@ -414,6 +434,8 @@ def format_pretty_place(lat, lon):
 
 def overlay_text_on_video(video_path, output_path):
     date, lat, lon = extract_video_metadata(video_path)
+    print("Overlay text start: ", date, lat, lon)
+    if date == None: date = datetime.datetime(1970, 1, 1)
     output_path = "overlayed/overlay_" + date.strftime("%Y%m%d-%H%M%S") + output_path
 
     # Method 1: Using os.path.exists()
@@ -423,7 +445,7 @@ def overlay_text_on_video(video_path, output_path):
     else:
         print(f"File does not exist at: {output_path} -> creating")
 
-    video = VideoFileClip(video_path) #.subclipped(0,0.25) #DEBUGGING
+    video = VideoFileClip(video_path)#.subclipped(0,1) #DEBUGGING
 
     width = video.w
     height = video.h
@@ -444,7 +466,7 @@ def overlay_text_on_video(video_path, output_path):
     font_path = "/usr/share/fonts/truetype/noto/NotoSansMono-Medium.ttf" #"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # Adjust for your OS
 
     # Create a blank image
-    img = Image.new("RGBA", (video.w, font_size + 150), (0, 0, 0, 0))
+    img = Image.new("RGBA", (video.w, font_size + 250), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype(font_path, font_size)
 
@@ -457,8 +479,8 @@ def overlay_text_on_video(video_path, output_path):
 
 
 
-    x = 50
-    y = -15# if not shift_up else -30 #(video.w - text_width) // 2
+    x = 80 #60
+    y = 60 #40# if not shift_up else -30 #(video.w - text_width) // 2
 
     shadow_offset = 3
     draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill="black")
@@ -467,8 +489,17 @@ def overlay_text_on_video(video_path, output_path):
     # Convert to numpy and then to ImageClip
     subtitle_img = np.array(img)
     subtitle_clip = ImageClip(subtitle_img, duration=video.duration)
-    subtitle_clip = subtitle_clip.with_position(("left", "top"))
-    subtitle_clip = subtitle_clip.rotated(90+180, expand=True)
+
+
+
+    # rotated to the left
+    if "DG_" in video_path: # this is for dualgram (for some reason it's reverse)
+        subtitle_clip = subtitle_clip.with_position(("left", "bottom")) # right for bottom
+        subtitle_clip = subtitle_clip.rotated(90, expand=True)
+    else: # rotated to the right
+        subtitle_clip = subtitle_clip.with_position(("right", "top")) # left for bottom
+        subtitle_clip = subtitle_clip.rotated(90+180, expand=True)
+
 
 
     #font = ImageFont.load_default()

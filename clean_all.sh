@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 shopt -s nullglob
 
+detox . -r -v
+
 #rm cleaned/*_clean.mov
 #rm cleaned/*_clean.MOV
 #rm cleaned/*_clean.mp4
