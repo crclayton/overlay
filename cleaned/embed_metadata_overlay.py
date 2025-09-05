@@ -416,9 +416,10 @@ def format_pretty_place(lat, lon):
         suburb = address.get('suburb', '')
         state = address.get('state', '')
         shop = address.get('shop', '')
+        amenity = address.get('amenity', '') #if not neighbourhood else None
         county = address.get('county', '') if not city else None
-        road = address.get('road', '') if not neighbourhood else None
-        parts = [shop, road, neighbourhood, suburb, town, borough, city, county, state]
+        road = address.get('road', '') if not amenity else None
+        parts = [shop, amenity, road, neighbourhood, suburb, town, borough, city, county, state]
         clean_address = ", ".join([part for part in parts if part])
         print("LOCATION DATA", location, address, city, state)
         print("Clean address", clean_address)
