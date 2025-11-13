@@ -481,7 +481,7 @@ def overlay_text_on_video(video_path, output_path):
 
 
     x = 80 #60
-    y = 60 #40# if not shift_up else -30 #(video.w - text_width) // 2
+    y = 80 #40# if not shift_up else -30 #(video.w - text_width) // 2
 
     shadow_offset = 3
     draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill="black")
