@@ -409,16 +409,17 @@ def extract_video_metadata(video_path):
 
         #return date, None, None # DEBUGGING for temp, don't want to use the API that much
 
-        # converting from GMT to pacific (I think)
-        date = date - timedelta(hours=8, minutes=0)
+        if date != None:
+            # converting from GMT to pacific (I think)
+            date = date - timedelta(hours=8, minutes=0)
 
-        def hour_rounder(t):
-            # Rounds to nearest hour by adding a timedelta hour if minute >= 30
-            return (t.replace(second=0, microsecond=0, minute=0, hour=t.hour)
-                       +timedelta(hours=t.minute//30))
+            def hour_rounder(t):
+                # Rounds to nearest hour by adding a timedelta hour if minute >= 30
+                return (t.replace(second=0, microsecond=0, minute=0, hour=t.hour)
+                           +timedelta(hours=t.minute//30))
 
-        # round to nearest hour because we just show the %I and otherwise it trunkates 9:55AM to 9AM
-        date = hour_rounder(date)
+            # round to nearest hour because we just show the %I and otherwise it trunkates 9:55AM to 9AM
+            date = hour_rounder(date)
 
         #date = date.astimezone(timezone('US/Pacific'))
 
@@ -510,14 +511,16 @@ def format_pretty_place(lat, lon):
         neighbourhood = address.get('neighbourhood', '')
         city = address.get('city', '')
         town = address.get('town', '')
+        village = address.get('village', '')
         borough = address.get('borough', '')
-        suburb = address.get('suburb', '')
         state = address.get('state', '')
         shop = address.get('shop', '')
         amenity = address.get('amenity', '') #if not neighbourhood else None
+        commercial = address.get('commercial', '') #if not neighbourhood else None
+        suburb = address.get('suburb', '') if not neighbourhood else None
         county = address.get('county', '') if not city else None
         road = address.get('road', '') if not amenity else None
-        parts = unq([shop, amenity, road, neighbourhood, suburb, town, borough, city, county, state])
+        parts = unq([shop, amenity, commercial, road, neighbourhood, suburb, village, town, borough, city, county, state])
         clean_address = ", ".join([part for part in parts if part])
         print("LOCATION DATA", location, address, city, state)
         print("Clean address", clean_address)
@@ -617,7 +620,7 @@ def overlay_text_on_video(video_path, output_path):
     text = pretty_date + "\n" + location
 
 
-    font_size = 40
+    font_size = 35
     font_path = "/usr/share/fonts/truetype/noto/NotoSansMono-Medium.ttf"
     font = ImageFont.truetype(font_path, font_size)
 
@@ -632,7 +635,7 @@ def overlay_text_on_video(video_path, output_path):
 
     # Text
     x = 80
-    y = 80
+    y = 100
     shadow_offset = 3
     draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill="black")
     draw.text((x, y), text, font=font, fill="#eb9605")
@@ -644,10 +647,10 @@ def overlay_text_on_video(video_path, output_path):
         map_px = 320
         padding = 320
 
-        map_img = osm_tile_map_image(lat, lon, zoom=12, px=map_px)
+        map_img = osm_tile_map_image(lat, lon, zoom=16, px=map_px)
 
-        x_map = 700 # padding  #img.width - map_px - padding
-        y_map = 1500 # img.height - map_px - padding  #padding
+        x_map = 720 # padding  #img.width - map_px - padding
+        y_map = 1550 # img.height - map_px - padding  #padding
 
         plate = Image.new("RGBA", (map_px + 8, map_px + 8), (0, 0, 0, 140))
         img.paste(plate, (x_map - 4, y_map - 4), plate)
