@@ -2,6 +2,7 @@ rm *.MOV
 rm *.mov
 rm *.MP4
 rm *.mp4
+rm *.AVI
 
 cd cleaned
 rm *.mov

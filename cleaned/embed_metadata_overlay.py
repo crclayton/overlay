@@ -1,5 +1,5 @@
 # make it so clean also makes the size the same so the overlay stays proportional
-
+import random
 import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
@@ -508,19 +508,25 @@ def format_pretty_place(lat, lon):
     try:
         location = geolocator.reverse(str(lat)+","+str(lon))
         address = location.raw['address']
-        neighbourhood = address.get('neighbourhood', '')
-        city = address.get('city', '')
         town = address.get('town', '')
         village = address.get('village', '')
         borough = address.get('borough', '')
-        state = address.get('state', '')
         shop = address.get('shop', '')
-        amenity = address.get('amenity', '') #if not neighbourhood else None
-        commercial = address.get('commercial', '') #if not neighbourhood else None
-        suburb = address.get('suburb', '') if not neighbourhood else None
+        commercial = address.get('commercial', '')
+
+        city = address.get('city', '')
         county = address.get('county', '') if not city else None
+        state_district = address.get('state_district', '') if not city and not county else None
+        state = address.get('state', '')
+
+        neighbourhood = address.get('neighbourhood', '')
+        suburb = address.get('suburb', '') if not neighbourhood else None
+        city_district = address.get('city_district', '') if not suburb and not neighbourhood else None
+
+        amenity = address.get('amenity', '')
         road = address.get('road', '') if not amenity else None
-        parts = unq([shop, amenity, commercial, road, neighbourhood, suburb, village, town, borough, city, county, state])
+
+        parts = unq([shop, amenity, commercial, road, neighbourhood, suburb, village, town, borough, city_district, city, county, state_district, state])
         clean_address = ", ".join([part for part in parts if part])
         print("LOCATION DATA", location, address, city, state)
         print("Clean address", clean_address)
@@ -647,7 +653,16 @@ def overlay_text_on_video(video_path, output_path):
         map_px = 320
         padding = 320
 
-        map_img = osm_tile_map_image(lat, lon, zoom=16, px=map_px)
+        #map_img = osm_tile_map_image(lat, lon, zoom=16, px=map_px) # block view
+        #map_img = osm_tile_map_image(lat, lon, zoom=4, px=map_px) # regional continental view
+        #map_img = osm_tile_map_image(lat, lon, zoom=3, px=map_px) # continental view
+        #map_img = osm_tile_map_image(lat, lon, zoom=2, px=map_px) # global view
+
+        #map_img = osm_tile_map_image(lat, lon, zoom=6, px=map_px) # regional but without identifyable features
+
+        #map_img = osm_tile_map_image(lat, lon, zoom=8, px=map_px)
+        scale = random.choice([18,17,16,15,14, 4,3,2])
+        map_img = osm_tile_map_image(lat, lon, zoom=scale, px=map_px)
 
         x_map = 720 # padding  #img.width - map_px - padding
         y_map = 1550 # img.height - map_px - padding  #padding
@@ -671,11 +686,12 @@ def overlay_text_on_video(video_path, output_path):
     subtitle_clip = ImageClip(subtitle_img, duration=video.duration)
 
 
-
+    print("Video path:", video_path)
     # rotated to the left
-    if "DG_" in video_path: # this is for dualgram (for some reason it's reverse)
+    if "DG_" in video_path or video_path.startswith("received") or video_path.startswith("2018") or video_path.startswith("2019") or video_path.startswith("2017"):
         subtitle_clip = subtitle_clip.rotated(90, expand=True)
         subtitle_clip = subtitle_clip.with_position(("left", "bottom")) # right for bottom
+        print("ROTATED")
     else: # rotated to the right
         subtitle_clip = subtitle_clip.rotated(90+180, expand=True)
         subtitle_clip = subtitle_clip.with_position(("right", "top")) # left for bottom
