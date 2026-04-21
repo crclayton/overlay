@@ -509,6 +509,7 @@ def format_pretty_place(lat, lon):
         location = geolocator.reverse(str(lat)+","+str(lon))
         address = location.raw['address']
         town = address.get('town', '')
+        building = address.get('building', '')
         village = address.get('village', '')
         borough = address.get('borough', '')
         shop = address.get('shop', '')
@@ -524,9 +525,9 @@ def format_pretty_place(lat, lon):
         city_district = address.get('city_district', '') if not suburb and not neighbourhood else None
 
         amenity = address.get('amenity', '')
-        road = address.get('road', '') if not amenity else None
+        road = address.get('road', '') if not amenity and not building else None
 
-        parts = unq([shop, amenity, commercial, road, neighbourhood, suburb, village, town, borough, city_district, city, county, state_district, state])
+        parts = unq([building, shop, amenity, commercial, road, neighbourhood, suburb, village, town, borough, city_district, city, county, state_district, state])
         clean_address = ", ".join([part for part in parts if part])
         print("LOCATION DATA", location, address, city, state)
         print("Clean address", clean_address)
